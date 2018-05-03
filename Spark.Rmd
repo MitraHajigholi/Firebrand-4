@@ -9,7 +9,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ### CREATE SPARK ENVIRONMENT
 install sparklyr
-```{r}
+```{r eval=FALSE}
 install.packages("sparklyr")
 
 ```
@@ -125,7 +125,7 @@ centers <- as.data.frame(cl$centers)
 iris %>% 
   ggplot(aes(Petal.Length, Petal.Width)) +
   geom_point(aes(colour=Species) , size=2, alpha=0.1)+
-  geom_point(aes(data=centers) , size=60, alpha=0.1)
+  geom_point(data=centers, size=60, alpha=0.1)
   
 ```
 
@@ -137,12 +137,7 @@ sc <- spark_connect(master= "local")
 iris_tbl <- copy_to(sc,iris,"iris", overview=TRUE)
 ```
 
-```{r}
-model <- iris_tbl %>% 
-  select(Petal_Width, Petal_Length) %>% 
-  ...
 
-```
 
 
 
