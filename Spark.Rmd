@@ -1,0 +1,158 @@
+---
+title: "Spark"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### CREATE SPARK ENVIRONMENT
+install sparklyr
+```{r}
+install.packages("sparklyr")
+
+```
+
+Select connection, new conenction, spark (local, pre-installed)
+
+use libraries
+```{r}
+library(sparklyr)
+library(dplyr)
+library(nycflights13)
+
+sc <- spark_connect(master= "local")
+
+```
+
+### Storage
+By default doing anything in spark, it will put the data in memory. 
+
+When saving to disk it needs hadoop.  
+
+
+```{r}
+summary(flights)
+flights_tbl <- copy_to(sc, flights, "flights", overwrite = TRUE)
+
+
+```
+### Packages to use
+
+ft_* = feature transformation, working with columns
+
+ml_* = machine learning tasks
+
+sdf_* = spark data frames, imoprt, changes, pivot, etc with tables
+
+spark_* = spark instants, spark for working with clusters 
+
+
+R tells Spark to do tasks, waits for it to be done, shows the result. For more than 100 million rows (depends on how wide dataset it) it starts to be slow working with R
+
+
+ft function to prepare the data and basic things
+
+sdf partition to split and test data = Sample the data 
+
+
+### Sample
+```{r}
+flights_tbl %>% 
+  sdf_partition(training= 0.7, test=0.3, seed=888) ->
+  partition
+
+
+```
+
+### Select columns
+```{r}
+partition$training %>% 
+  ml_linear_regression(arr_delay ~ + carrier + origin + dest+ hour) ->  # consider these coulms as linear model
+  fit
+```
+### Summary of the columns coeff
+```{r}
+summary(fit)  # similar to Linear Model (ML) function used before ??
+```
+
+```{r}
+
+```
+
+
+### Score data 
+```{r}
+library(ggplot2)
+sdf_predict(fit,partition$test)  %>%   
+  sdf_register("scored_data")
+
+tbl(sc,"scored_data") %>% 
+  select(arr_delay, prediction) %>% 
+  collect() -> # allows us to collect the dataset that is the predictive values
+  predicted_vals
+  
+predicted_vals %>% 
+  ggplot(aes(x = arr_delay, y = prediction)) +
+  geom_abline(lty="dashed", col = "red") +
+  geom_jitter(alpha=0.5) +
+  coord_fixed(ratio = 1) +
+  labs(
+    x= "Actual arrdelay",
+    y= "Predicted arrdelay",
+    title = " Predicted vs. Actual"
+  )
+
+```
+
+THis is a bad model without any preprocessing.... predicted vs actual should be a straight line.
+
+
+
+
+
+
+### Kmeans in R
+```{r}
+cl <- iris %>%
+  select(Petal.Width, Petal.Length) %>% 
+  kmeans(centers = 3)
+
+centers <- as.data.frame(cl$centers)
+
+# darker points more datapoints observed
+iris %>% 
+  ggplot(aes(Petal.Length, Petal.Width)) +
+  geom_point(aes(colour=Species) , size=2, alpha=0.1)+
+  geom_point(aes(data=centers) , size=60, alpha=0.1)
+  
+```
+
+
+### Kmeans in Spark , do not need to save it as a dataframe as in R, 
+
+```{r}
+sc <- spark_connect(master= "local")
+iris_tbl <- copy_to(sc,iris,"iris", overview=TRUE)
+```
+
+```{r}
+model <- iris_tbl %>% 
+  select(Petal_Width, Petal_Length) %>% 
+  ...
+
+```
+
+
+
+### Linear regression in Spark vs R
+The spark data set can work over 4 Tb of data, does not work for R.
+
+### Logistic regression with Spark vs R
+For this type of model, Spark expects it to be 1 or 0, numeric value, not TRUE or FALSE
+
+
+### Survival Regression, survival time of the customer (insurance, patients)
+
+
